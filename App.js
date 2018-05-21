@@ -1,24 +1,192 @@
 import React from 'react';
-import { StyleSheet, Platform, Image, Text, View, ScrollView } from 'react-native';
+import { StyleSheet, Platform, Image, Text, View, ScrollView, 
+  AppRegistry,
+  PixelRatio,
+  TouchableOpacity } from 'react-native';
 
 import firebase from 'react-native-firebase';
+import ImagePicker from 'react-native-image-picker';
 
 export default class App extends React.Component {
   constructor() {
     super();
     this.state = {
       // firebase things?
+      userCreds: {},
+      uid: "",
+      avatarSource: null
     };
   }
 
   componentDidMount() {
     // firebase things?
+
+    firebase.auth()
+      .signInAnonymouslyAndRetrieveData()
+      .then(credential => {
+        if (credential) {
+          console.log('default app user ->', credential.user.toJSON());
+
+          this.setState({
+            userCreds: credential.user,
+            uid: credential.user.uid,
+          });
+
+          // TODO -> save user creds in SharedPrefs -> to upload files in uid folder
+
+          console.log("uid === " + this.state.uid);
+        }
+      });
+
+
+    const app = firebase.storage();
+    // const app = firebase.storage();
+    console.log("app === " + app.name);
+
+
+    setTimeout(() => {
+      console.log("timeout uid === " + this.state.uid);
+      // this.uploadImg;
+
+      // TODO -> Add image picker react-native library here to fetch the image URI
+
+      // const uri = require('./assets/spring-awakening-3132112_1920.jpg');
+      // console.log("uri === " + uri);
+      // fetch(uri)
+      //   .then(function(res) {
+      //     console.log("fetch res")
+      //     if (res.ok) {
+      //       res.blob();
+      //     }
+      //   })
+      //   .then(function(blob) {
+      //     console.log("blob res");
+      //     childRef
+      //       .put(blob)
+      //       .then(function(snapshot) {
+      //         console.log('Uploaded a blob or file!');
+              
+      //         console.log("download url === " + childRef.getDownloadURL());
+      //       })
+      //       .catch(function(error) {
+      //         console.error('Upload Error');
+      //       });
+      //   })
+      //   .catch(function(error) {
+      //     console.error('Error while fetching or blobing...' + error);
+      //   })
+    }, 2000);
+
+    
+
+
+    // download file - test
+    const ref = app.ref('/nature-3184889_1920.jpg');
+    console.log("path === " + ref.name);
+
+    ref.getDownloadURL().then(function(url) {
+      // Insert url into an <img> tag to "download"
+
+      console.log("SUCCESS..........!!!!!!!");
+    }).catch(function(error) {
+
+      // A full list of error codes is available at
+      // https://firebase.google.com/docs/storage/web/handle-errors
+      switch (error.code) {
+        case 'storage/object_not_found':
+          console.error("File doesn't exist");
+          break;
+
+        case 'storage/unauthorized':
+          console.error("User doesn't have permission to access the object");
+          break;
+
+        case 'storage/canceled':
+          console.error("User canceled the upload");
+          break;
+
+          // ...
+
+        case 'storage/unknown':
+          console.error("Unknown error occurred, inspect the server response");
+          break;
+      }
+    });
+  }
+
+  selectPhotoTapped() {
+    const options = {
+      quality: 1.0,
+      maxWidth: 500,
+      maxHeight: 500,
+      storageOptions: {
+        skipBackup: true
+      }
+    };
+
+    ImagePicker.showImagePicker(options, (response) => {
+      console.log('Response = ', response);
+      
+      this.uploadImageStorage(response.uri);
+      if (response.didCancel) {
+        console.log('User cancelled photo picker');
+      }
+      else if (response.error) {
+        console.log('ImagePicker Error: ', response.error);
+      }
+      else if (response.customButton) {
+        console.log('User tapped custom button: ', response.customButton);
+      }
+      else {
+        let source = { uri: response.uri };
+
+        // You can also display the image using data:
+        // let source = { uri: 'data:image/jpeg;base64,' + response.data };
+
+        this.setState({
+          avatarSource: source
+        });
+      }
+    });
+  }
+
+  uploadImageStorage(uri) {
+    console.log("uri === " + uri);
+    const _filePath = uri.replace('file://', '');
+    console.log("filepath === " + _filePath);
+    var _filename = _filePath.substring(_filePath.lastIndexOf('/')+1);
+
+    // Create a root reference
+    var storageRef = firebase.storage().ref();
+    console.log("app ref === " + storageRef.fullPath);
+    console.log("uid === " + this.state.uid);
+    var childRef = storageRef.child(this.state.uid + "/" + _filename);
+    console.log("childRef === " + childRef.fullPath);
+
+    childRef
+    .put(_filePath)
+    .then(function(snapshot) {
+      console.log('Uploaded a blob or file!');
+      
+      console.log("download url === " + childRef.getDownloadURL());
+    })
+    .catch(function(error) {
+      console.error('Upload Error');
+    });
   }
 
   render() {
     return (
       <ScrollView>
         <View style={styles.container}>
+        <TouchableOpacity onPress={this.selectPhotoTapped.bind(this)}>
+          <View style={[styles.avatar, styles.avatarContainer, {marginBottom: 20}]}>
+          { this.state.avatarSource === null ? <Text>Select a Photo</Text> :
+            <Image style={styles.avatar} source={this.state.avatarSource} />
+          }
+          </View>
+        </TouchableOpacity>
+
         <Image source={require('./assets/RNFirebase.png')} style={[styles.logo]} />
         <Text style={styles.welcome}>
           Welcome to the React Native{'\n'}Firebase starter project!
@@ -57,6 +225,30 @@ export default class App extends React.Component {
       </ScrollView>
     );
   }
+
+  uploadImg = async () => {
+    console.log("in async");
+    // upload file - test
+    const uri = require('./assets/spring-awakening-3132112_1920.jpg').url;
+    await uploadImageAsync(uri);
+  }
+}
+
+async function uploadImageAsync(uri) {
+  console.log("in upload image async fn");
+  
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  childRef
+    .put(blob)
+    .then(function(snapshot) {
+      console.log('Uploaded a blob or file!');
+      
+      console.log("download url === " + childRef.getDownloadURL());
+    })
+    .catch(function(error) {
+      console.error('Upload Error');
+    });
 }
 
 const styles = StyleSheet.create({
@@ -65,6 +257,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F5FCFF',
+  },
+  avatarContainer: {
+    borderColor: '#9B9B9B',
+    borderWidth: 1 / PixelRatio.get(),
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   logo: {
     height: 80,
