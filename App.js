@@ -14,7 +14,8 @@ export default class App extends React.Component {
       // firebase things?
       userCreds: {},
       uid: "",
-      avatarSource: null
+      avatarSource: null,
+      videoSource: null
     };
   }
 
@@ -128,6 +129,7 @@ export default class App extends React.Component {
       console.log('Response = ', response);
       
       this.uploadImageStorage(response.uri);
+      
       if (response.didCancel) {
         console.log('User cancelled photo picker');
       }
@@ -151,28 +153,91 @@ export default class App extends React.Component {
   }
 
   uploadImageStorage(uri) {
-    console.log("uri === " + uri);
-    const _filePath = uri.replace('file://', '');
-    console.log("filepath === " + _filePath);
-    var _filename = _filePath.substring(_filePath.lastIndexOf('/')+1);
+    if (uri != null) {
+      console.log("uri === " + uri);
+      const _filePath = uri.replace('file://', '');
+      console.log("filepath === " + _filePath);
+      var _filename = _filePath.substring(_filePath.lastIndexOf('/')+1);
 
-    // Create a root reference
-    var storageRef = firebase.storage().ref();
-    console.log("app ref === " + storageRef.fullPath);
-    console.log("uid === " + this.state.uid);
-    var childRef = storageRef.child(this.state.uid + "/" + _filename);
-    console.log("childRef === " + childRef.fullPath);
+      // Create a root reference
+      var storageRef = firebase.storage().ref();
+      console.log("app ref === " + storageRef.fullPath);
+      console.log("uid === " + this.state.uid);
+      var childRef = storageRef.child(this.state.uid + "/images/" + _filename);
+      console.log("childRef === " + childRef.fullPath);
 
-    childRef
-    .put(_filePath)
-    .then(function(snapshot) {
-      console.log('Uploaded a blob or file!');
-      
-      console.log("download url === " + childRef.getDownloadURL());
-    })
-    .catch(function(error) {
-      console.error('Upload Error');
+      // TODO -> set file type as image/jpg -> or dynamically as per the image type being uploaded
+
+      childRef
+      .put(_filePath)
+      .then(function(snapshot) {
+        console.log('Uploaded a blob or file!');
+        
+        console.log("download url === " + childRef.getDownloadURL());
+      })
+      .catch(function(error) {
+        console.error('Upload Error');
+      });
+    }
+  }
+
+  selectVideoTapped() {
+    const options = {
+      title: 'Video Picker',
+      takePhotoButtonTitle: 'Take Video...',
+      mediaType: 'video',
+      videoQuality: 'medium'
+    };
+
+    ImagePicker.showImagePicker(options, (response) => {
+      console.log('Response = ', response);
+
+      this.uploadVideoStorage(response.uri);
+
+      if (response.didCancel) {
+        console.log('User cancelled video picker');
+      }
+      else if (response.error) {
+        console.log('ImagePicker Error: ', response.error);
+      }
+      else if (response.customButton) {
+        console.log('User tapped custom button: ', response.customButton);
+      }
+      else {
+        this.setState({
+          videoSource: response.uri
+        });
+      }
     });
+  }
+
+  uploadVideoStorage(uri) {
+    if (uri != null) {
+      console.log("uri === " + uri);
+      const _filePath = uri.replace('file://', '');
+      console.log("filepath === " + _filePath);
+      var _filename = _filePath.substring(_filePath.lastIndexOf('/')+1);
+
+      // Create a root reference
+      var storageRef = firebase.storage().ref();
+      console.log("app ref === " + storageRef.fullPath);
+      console.log("uid === " + this.state.uid);
+      var childRef = storageRef.child(this.state.uid + "/videos/" + _filename);
+      console.log("childRef === " + childRef.fullPath);
+
+      // TODO -> set file type dynamically as per the video type being uploaded
+
+      childRef
+      .putFile(_filePath)
+      .then(function(snapshot) {
+        console.log('Uploaded a blob or file!');
+        
+        console.log("download url === " + childRef.getDownloadURL());
+      })
+      .catch(function(error) {
+        console.error('Upload Error');
+      });
+    }
   }
 
   render() {
@@ -186,6 +251,17 @@ export default class App extends React.Component {
           }
           </View>
         </TouchableOpacity>
+        <TouchableOpacity onPress={this.selectVideoTapped.bind(this)}>
+          <View style={[styles.avatar, styles.avatarContainer]}>
+            <Text>Select a Video</Text>
+          </View>
+        </TouchableOpacity>
+
+        { this.state.videoSource &&
+          <Text style={{margin: 8, textAlign: 'center'}}>{this.state.videoSource}</Text>
+        }
+
+        {/* ^^^^^^^^^ added code ^^^^^^^^^  */}
 
         <Image source={require('./assets/RNFirebase.png')} style={[styles.logo]} />
         <Text style={styles.welcome}>
@@ -263,6 +339,11 @@ const styles = StyleSheet.create({
     borderWidth: 1 / PixelRatio.get(),
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  avatar: {
+    borderRadius: 75,
+    width: 150,
+    height: 150
   },
   logo: {
     height: 80,
