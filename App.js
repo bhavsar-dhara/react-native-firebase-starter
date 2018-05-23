@@ -167,9 +167,13 @@ export default class App extends React.Component {
       console.log("childRef === " + childRef.fullPath);
 
       // TODO -> set file type as image/jpg -> or dynamically as per the image type being uploaded
-
+      // Create file metadata including the content type
+      var metadata = {
+        contentType: 'image/jpeg',
+      };
+      
       childRef
-      .put(_filePath)
+      .put(_filePath, metadata)
       .then(function(snapshot) {
         console.log('Uploaded a blob or file!');
         
@@ -226,9 +230,13 @@ export default class App extends React.Component {
       console.log("childRef === " + childRef.fullPath);
 
       // TODO -> set file type dynamically as per the video type being uploaded
-
+      // Create file metadata including the content type
+      var metadata = {
+        contentType: 'video/mp4',
+      };
+      
       childRef
-      .putFile(_filePath)
+      .putFile(_filePath, metadata)
       .then(function(snapshot) {
         console.log('Uploaded a blob or file!');
         
